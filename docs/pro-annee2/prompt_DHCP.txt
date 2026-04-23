@@ -1,0 +1,1 @@
+"Réalise un script PowerShell sur serveur Windows qui trie les réservations IP d'une étendue, prend chaque nom, chaque IP, chaque MAC et trie les MAC selon le modèle de la machine. Modifie-le ensuite de sorte à recenser uniquement les machines qui ont communiqué depuis moins de 2 ans et/ou qui sont en ligne, ou toute information qui indiquerait qu'elles sont encore utilisées."

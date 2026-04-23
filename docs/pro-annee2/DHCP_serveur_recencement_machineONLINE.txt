@@ -1,0 +1,957 @@
+#Requires -Modules DhcpServer
+
+[CmdletBinding()]
+param(
+    [Parameter(Position = 0)]
+    [string[]]$ScopeId,
+
+    [Parameter()]
+    [string]$DhcpServer = $env:COMPUTERNAME,
+
+    [Parameter()]
+    [string]$ExportXlsx,
+
+    [Parameter()]
+    [string]$ExportCsv,
+
+    [Parameter()]
+    [string]$ExportHtml,
+
+    [Parameter()]
+    [int]$OuiUpdateDays = 30,
+
+    [Parameter()]
+    [switch]$SkipPing,
+
+    [Parameter()]
+    [int]$InactiveDays = 90,
+
+    # Seuil max en jours pour considerer une machine comme "active"
+    # Par defaut : 730 jours = 2 ans
+    [Parameter()]
+    [int]$MaxInactiveDays = 730
+)
+
+# -----------------------------------------------
+# SECTION 1 : Verification module ImportExcel
+# -----------------------------------------------
+
+function Install-ImportExcelIfNeeded {
+    if (-not (Get-Module -ListAvailable -Name ImportExcel)) {
+        Write-Host "[*] Installation du module ImportExcel..." -ForegroundColor Cyan
+        try {
+            Install-Module -Name ImportExcel -Force -Scope CurrentUser -ErrorAction Stop
+            Write-Host "[OK] Module ImportExcel installe." -ForegroundColor Green
+        }
+        catch {
+            Write-Warning "Impossible d installer ImportExcel automatiquement."
+            Write-Warning "Lancez manuellement : Install-Module -Name ImportExcel -Force -Scope CurrentUser"
+            return $false
+        }
+    }
+    Import-Module ImportExcel -ErrorAction Stop
+    return $true
+}
+
+# -----------------------------------------------
+# SECTION 2 : Base OUI (identification fabricant)
+# -----------------------------------------------
+
+$ouiCachePath = Join-Path $env:TEMP "oui_cache.json"
+$ouiUrl = "https://standards-oui.ieee.org/oui/oui.txt"
+
+function Get-OuiDatabase {
+
+    $localOui = Join-Path $PSScriptRoot "oui.txt"
+    if (Test-Path $localOui) {
+        Write-Host "[*] Chargement de la base OUI locale : $localOui" -ForegroundColor Cyan
+        $ouiTable = @{}
+        $regex = "([0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2})\s+\(hex\)\s+(.+)"
+        foreach ($line in (Get-Content $localOui)) {
+            if ($line -match $regex) {
+                $prefix = $Matches[1].Replace("-", "").ToUpper()
+                $vendor = $Matches[2].Trim()
+                $ouiTable[$prefix] = $vendor
+            }
+        }
+        Write-Host "[OK] Base OUI locale chargee : $($ouiTable.Count) fabricants" -ForegroundColor Green
+        return $ouiTable
+    }
+
+    if (Test-Path $ouiCachePath) {
+        $cacheAge = (Get-Date) - (Get-Item $ouiCachePath).LastWriteTime
+        if ($cacheAge.TotalDays -lt $OuiUpdateDays) {
+            Write-Verbose "Chargement de la base OUI depuis le cache"
+            return (Get-Content $ouiCachePath -Raw | ConvertFrom-Json)
+        }
+    }
+
+    Write-Host "[*] Telechargement de la base OUI IEEE..." -ForegroundColor Cyan
+    try {
+        $ouiRaw = (Invoke-WebRequest -Uri $ouiUrl -UseBasicParsing -ErrorAction Stop).Content
+    }
+    catch {
+        Write-Warning "Impossible de telecharger la base OUI. Utilisation de la base integree."
+        return Get-BuiltinOuiDatabase
+    }
+
+    $ouiTable = @{}
+    $regex = "([0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2})\s+\(hex\)\s+(.+)"
+
+    foreach ($line in ($ouiRaw -split "`n")) {
+        if ($line -match $regex) {
+            $prefix = $Matches[1].Replace("-", "").ToUpper()
+            $vendor = $Matches[2].Trim()
+            $ouiTable[$prefix] = $vendor
+        }
+    }
+
+    $ouiTable | ConvertTo-Json -Depth 1 -Compress | Set-Content $ouiCachePath -Force
+    Write-Host "[OK] Base OUI chargee : $($ouiTable.Count) fabricants" -ForegroundColor Green
+
+    return $ouiTable
+}
+
+function Get-BuiltinOuiDatabase {
+    return @{
+        "3C4A92" = "HP Inc."
+        "9CB654" = "HP Inc."
+        "A0D3C1" = "HP Inc."
+        "1CC1DE" = "HP Inc."
+        "308D99" = "HP Inc."
+        "80CE62" = "HP Inc."
+        "D8D385" = "HP Inc."
+        "EC8EB5" = "HP Inc."
+        "B499BA" = "Hewlett Packard Enterprise"
+        "48DF37" = "Hewlett Packard Enterprise"
+        "A0B3CC" = "Hewlett Packard Enterprise"
+        "F8BC12" = "Dell Inc."
+        "18A99B" = "Dell Inc."
+        "D4BED9" = "Dell Inc."
+        "B083FE" = "Dell Inc."
+        "246E96" = "Dell Inc."
+        "F48E38" = "Dell Inc."
+        "509A4C" = "Dell Inc."
+        "8CF956" = "Lenovo"
+        "70F395" = "Lenovo"
+        "E8F724" = "Lenovo"
+        "8C8590" = "Lenovo"
+        "5CF3FC" = "Lenovo"
+        "98FA9B" = "Lenovo"
+        "C80AA9" = "Lenovo"
+        "001DD8" = "Microsoft Corporation"
+        "0050F2" = "Microsoft Corporation"
+        "7C1E52" = "Microsoft Corporation"
+        "285FDB" = "Microsoft Corporation"
+        "C8F750" = "Microsoft Corporation"
+        "A4B197" = "Apple, Inc."
+        "38F9D3" = "Apple, Inc."
+        "D03311" = "Apple, Inc."
+        "F0B479" = "Apple, Inc."
+        "00259C" = "Cisco Systems"
+        "F87B20" = "Cisco Systems"
+        "7069E6" = "Cisco Meraki"
+        "005056" = "VMware, Inc."
+        "000C29" = "VMware, Inc."
+        "000569" = "VMware, Inc."
+        "A4BF01" = "Intel Corporate"
+        "3C6AA7" = "Intel Corporate"
+        "48D224" = "Intel Corporate"
+        "B4969A" = "Intel Corporate"
+        "525400" = "Realtek (QEMU/KVM)"
+        "001854" = "Realtek Semiconductor"
+        "002481" = "Xerox Corporation"
+        "0000AA" = "Xerox Corporation"
+        "3C2AF4" = "Brother Industries"
+        "0017C8" = "Kyocera"
+        "002507" = "RICOH COMPANY"
+        "008077" = "Brother Industries"
+    }
+}
+
+function Resolve-MacVendor {
+    param(
+        [string]$MacAddress,
+        [hashtable]$OuiDb
+    )
+
+    $cleanMac = $MacAddress.ToUpper() -replace "[^0-9A-F]", ""
+
+    if ($cleanMac.Length -lt 6) {
+        return "Format MAC invalide"
+    }
+
+    $prefix = $cleanMac.Substring(0, 6)
+
+    if ($OuiDb.ContainsKey($prefix)) {
+        return $OuiDb[$prefix]
+    }
+
+    return "Fabricant inconnu ($prefix)"
+}
+
+# -----------------------------------------------
+# SECTION 3 : Recuperation des reservations DHCP
+# -----------------------------------------------
+
+function Get-DhcpReservationsFromScope {
+    param(
+        [string]$Server,
+        [string]$Scope,
+        [hashtable]$OuiDb
+    )
+
+    Write-Host ""
+    Write-Host "[*] Etendue : $Scope" -ForegroundColor Yellow
+
+    try {
+        $reservations = Get-DhcpServerv4Reservation -ComputerName $Server -ScopeId $Scope -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "  Impossible de lire l etendue $Scope : $_"
+        return @()
+    }
+
+    if (-not $reservations -or $reservations.Count -eq 0) {
+        Write-Host "  Aucune reservation trouvee." -ForegroundColor DarkGray
+        return @()
+    }
+
+    Write-Host "  $($reservations.Count) reservation(s) trouvee(s)" -ForegroundColor Green
+
+    $results = foreach ($r in $reservations) {
+        $mac = $r.ClientId
+        $vendor = Resolve-MacVendor -MacAddress $mac -OuiDb $OuiDb
+
+        [PSCustomObject]@{
+            Etendue   = $Scope
+            Nom       = $r.Name
+            IP        = $r.IPAddress.ToString()
+            MAC       = $mac.ToUpper()
+            Fabricant = $vendor
+            Type      = $r.Type
+        }
+    }
+
+    return $results
+}
+
+function Get-DhcpLeasesFromScope {
+    param(
+        [string]$Server,
+        [string]$Scope,
+        [hashtable]$OuiDb
+    )
+
+    Write-Host ""
+    Write-Host "[*] Baux actifs etendue : $Scope" -ForegroundColor Yellow
+
+    try {
+        $leases = Get-DhcpServerv4Lease -ComputerName $Server -ScopeId $Scope -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "  Impossible de lire les baux de $Scope : $_"
+        return @()
+    }
+
+    if (-not $leases -or $leases.Count -eq 0) {
+        Write-Host "  Aucun bail actif." -ForegroundColor DarkGray
+        return @()
+    }
+
+    Write-Host "  $($leases.Count) bail(s) actif(s)" -ForegroundColor Green
+
+    $results = foreach ($l in $leases) {
+        $mac = $l.ClientId
+        $vendor = Resolve-MacVendor -MacAddress $mac -OuiDb $OuiDb
+
+        [PSCustomObject]@{
+            Etendue        = $Scope
+            Nom            = $l.HostName
+            IP             = $l.IPAddress.ToString()
+            MAC            = $mac.ToUpper()
+            Fabricant      = $vendor
+            Etat           = $l.AddressState
+            DernierBail    = if ($l.LeaseExpiryTime) { $l.LeaseExpiryTime.AddDays(-8).ToString("dd/MM/yyyy HH:mm") } else { "Inconnu" }
+            ExpirationBail = if ($l.LeaseExpiryTime) { $l.LeaseExpiryTime.ToString("dd/MM/yyyy HH:mm") } else { "Inconnu" }
+        }
+    }
+
+    return $results
+}
+
+# -----------------------------------------------
+# SECTION 4 : Informations Active Directory
+# -----------------------------------------------
+
+function Get-ADComputerInfo {
+    Write-Host ""
+    Write-Host "[*] Recuperation des informations Active Directory..." -ForegroundColor Cyan
+
+    try {
+        Import-Module ActiveDirectory -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "Module ActiveDirectory non disponible. Les infos AD seront absentes."
+        return $null
+    }
+
+    try {
+        $computers = Get-ADComputer -Filter * -Properties `
+            Name, `
+            LastLogonTimestamp, `
+            OperatingSystem, `
+            OperatingSystemVersion, `
+            Description, `
+            Enabled, `
+            Created, `
+            DistinguishedName, `
+            IPv4Address `
+            -ErrorAction Stop
+
+        Write-Host "  $($computers.Count) compte(s) ordinateur(s) trouves dans l AD" -ForegroundColor Green
+
+        $adTable = @{}
+        foreach ($c in $computers) {
+            $lastLogon = $null
+            $joursInactif = $null
+
+            if ($c.LastLogonTimestamp) {
+                $lastLogon = [DateTime]::FromFileTime($c.LastLogonTimestamp)
+                $joursInactif = [math]::Round(((Get-Date) - $lastLogon).TotalDays, 0)
+            }
+
+            $ou = ""
+            if ($c.DistinguishedName) {
+                $parts = $c.DistinguishedName -split ","
+                $ouParts = @()
+                foreach ($p in $parts) {
+                    if ($p -match "^OU=(.+)$") {
+                        $ouParts += $Matches[1]
+                    }
+                }
+                $ou = ($ouParts -join " > ")
+            }
+
+            $adTable[$c.Name.ToUpper()] = [PSCustomObject]@{
+                DerniereConnexion = if ($lastLogon) { $lastLogon.ToString("dd/MM/yyyy HH:mm") } else { "Jamais" }
+                JoursInactif      = if ($null -ne $joursInactif) { $joursInactif } else { 9999 }
+                OS                = if ($c.OperatingSystem) { $c.OperatingSystem } else { "Inconnu" }
+                VersionOS         = if ($c.OperatingSystemVersion) { $c.OperatingSystemVersion } else { "" }
+                Description       = if ($c.Description) { $c.Description } else { "" }
+                CompteActif       = if ($c.Enabled) { "Oui" } else { "Non" }
+                DateCreation      = if ($c.Created) { $c.Created.ToString("dd/MM/yyyy") } else { "" }
+                OU                = $ou
+                IPAD              = if ($c.IPv4Address) { $c.IPv4Address } else { "" }
+            }
+        }
+
+        return $adTable
+    }
+    catch {
+        Write-Warning "Erreur lors de la lecture AD : $_"
+        return $null
+    }
+}
+
+# -----------------------------------------------
+# SECTION 5 : Test de connectivite (ping parallele)
+# -----------------------------------------------
+
+function Test-MachinesConnectivity {
+    param(
+        [array]$Machines
+    )
+
+    Write-Host ""
+    Write-Host "[*] Test de connectivite (2 pings simultanees par machine, timeout 2s)..." -ForegroundColor Cyan
+
+    $pingResults = @{}
+    $jobs = @()
+
+    # Lancer 2 pings simultanes par machine d'un seul coup
+    foreach ($m in $Machines) {
+        $ip = $m.IP
+        $jobs += [PSCustomObject]@{
+            IP    = $ip
+            Ping1 = (New-Object System.Net.NetworkInformation.Ping).SendPingAsync($ip, 2000)
+            Ping2 = (New-Object System.Net.NetworkInformation.Ping).SendPingAsync($ip, 2000)
+        }
+    }
+
+    Write-Host "  $($jobs.Count) machine(s) en cours de ping..." -ForegroundColor Cyan
+
+    # Collecter toutes les tasks et attendre qu elles soient toutes finies
+    $allTasks = $jobs | ForEach-Object { $_.Ping1; $_.Ping2 }
+    try {
+        [System.Threading.Tasks.Task]::WhenAll($allTasks).Wait(10000) | Out-Null
+    }
+    catch { }
+
+    # Une machine est "En ligne" si au moins un des 2 pings reussit
+    foreach ($job in $jobs) {
+        $ok = $false
+        foreach ($task in @($job.Ping1, $job.Ping2)) {
+            try {
+                if ($task.IsCompleted -and -not $task.IsFaulted -and $task.Result.Status -eq "Success") {
+                    $ok = $true
+                    break
+                }
+            }
+            catch { }
+        }
+        $pingResults[$job.IP] = if ($ok) { "En ligne" } else { "Hors ligne" }
+    }
+
+    $online  = ($pingResults.Values | Where-Object { $_ -eq "En ligne" }).Count
+    $offline = ($pingResults.Values | Where-Object { $_ -eq "Hors ligne" }).Count
+    Write-Host "  En ligne : $online | Hors ligne : $offline" -ForegroundColor Green
+
+    return $pingResults
+}
+
+# -----------------------------------------------
+# SECTION 6 : Croisement des donnees
+# -----------------------------------------------
+
+function Merge-AllData {
+    param(
+        [array]$DhcpData,
+        [hashtable]$AdData,
+        [hashtable]$PingData
+    )
+
+    $results = foreach ($item in $DhcpData) {
+        $cleanName = $item.Nom -replace "\..*$", ""
+        $cleanName = $cleanName.ToUpper()
+
+        $ad = $null
+        if ($AdData -and $AdData.ContainsKey($cleanName)) {
+            $ad = $AdData[$cleanName]
+        }
+
+        $pingStatus = "Non teste"
+        if ($PingData -and $PingData.ContainsKey($item.IP)) {
+            $pingStatus = $PingData[$item.IP]
+        }
+
+        [PSCustomObject]@{
+            Nom               = $item.Nom
+            IP                = $item.IP
+            MAC               = $item.MAC
+            Fabricant         = $item.Fabricant
+            Etendue           = $item.Etendue
+            Type              = $item.Type
+            Statut            = $pingStatus
+            DerniereConnexion = if ($ad) { $ad.DerniereConnexion } else { "Non trouve dans AD" }
+            JoursInactif      = if ($ad) { $ad.JoursInactif } else { $null }
+            OS                = if ($ad) { $ad.OS } else { "Inconnu" }
+            Description       = if ($ad) { $ad.Description } else { "" }
+            CompteActif       = if ($ad) { $ad.CompteActif } else { "?" }
+            DateCreation      = if ($ad) { $ad.DateCreation } else { "" }
+            OU                = if ($ad) { $ad.OU } else { "" }
+        }
+    }
+
+    return $results
+}
+
+# -----------------------------------------------
+# SECTION 6b : Filtrage machines actives
+# -----------------------------------------------
+# Une machine est conservee si AU MOINS UN des criteres suivants est vrai :
+#   1. Ping reussi (En ligne au moment du scan)
+#   2. Derniere connexion AD < MaxInactiveDays jours
+#   3. Compte AD actif (Enabled = Oui) ET connexion AD connue (pas "Jamais" ni "Non trouve")
+#
+# Une machine est EXCLUE si TOUS ces criteres sont faux, c-a-d :
+#   - Hors ligne OU non testee
+#   - ET (connexion inconnue OU >= MaxInactiveDays jours)
+#   - ET (compte desactive OU pas dans l AD)
+
+function Select-ActiveMachines {
+    param(
+        [array]$Data,
+        [int]$MaxDays
+    )
+
+    $active   = [System.Collections.Generic.List[object]]::new()
+    $excluded = [System.Collections.Generic.List[object]]::new()
+
+    foreach ($m in $Data) {
+
+        # Critere 1 : en ligne
+        $isOnline = ($m.Statut -eq "En ligne")
+
+        # Critere 2 : connexion AD recente
+        $recentAD = $false
+        if ($null -ne $m.JoursInactif -and $m.JoursInactif -lt $MaxDays) {
+            $recentAD = $true
+        }
+
+        # Critere 3 : compte AD actif avec une connexion connue
+        $activeAD = (
+            $m.CompteActif -eq "Oui" -and
+            $m.DerniereConnexion -ne "Jamais" -and
+            $m.DerniereConnexion -ne "Non trouve dans AD"
+        )
+
+        if ($isOnline -or $recentAD -or $activeAD) {
+            # Ajouter la raison de conservation (utile pour debug / audit)
+            $raisons = @()
+            if ($isOnline) { $raisons += "En ligne" }
+            if ($recentAD) { $raisons += "AD <$MaxDays j" }
+            if ($activeAD) { $raisons += "Compte AD actif" }
+            $m | Add-Member -NotePropertyName "RaisonConservation" -NotePropertyValue ($raisons -join " | ") -Force
+            $active.Add($m)
+        }
+        else {
+            $m | Add-Member -NotePropertyName "RaisonConservation" -NotePropertyValue "EXCLU" -Force
+            $excluded.Add($m)
+        }
+    }
+
+    Write-Host ""
+    Write-Host "============================================" -ForegroundColor Cyan
+    Write-Host "  FILTRAGE MACHINES ACTIVES" -ForegroundColor Cyan
+    Write-Host "  Seuil : $MaxDays jours ($([math]::Round($MaxDays/365,1)) an(s))" -ForegroundColor Cyan
+    Write-Host "============================================" -ForegroundColor Cyan
+    Write-Host "  Conservees : $($active.Count)" -ForegroundColor Green
+    Write-Host "  Exclues    : $($excluded.Count)" -ForegroundColor DarkGray
+
+    if ($excluded.Count -gt 0) {
+        Write-Host ""
+        Write-Host "  Machines exclues :" -ForegroundColor DarkGray
+        $excluded | Sort-Object Nom | ForEach-Object {
+            Write-Host ("    - {0,-30} IP: {1,-16} AD: {2}" -f $_.Nom, $_.IP, $_.DerniereConnexion) -ForegroundColor DarkGray
+        }
+    }
+
+    return [array]$active
+}
+
+# -----------------------------------------------
+# SECTION 7 : Export Excel (.xlsx)
+# -----------------------------------------------
+
+function Export-ExcelReport {
+    param(
+        [array]$Data,
+        [string]$Path,
+        [string]$ServerName,
+        [int]$SeuilInactif
+    )
+
+    if (Test-Path $Path) {
+        Remove-Item $Path -Force
+    }
+
+    $grouped = $Data | Group-Object -Property Fabricant | Sort-Object -Property Name
+
+    # --- Onglet 1 : Vue globale ---
+    $Data | Sort-Object Fabricant, IP |
+        Export-Excel -Path $Path `
+            -WorksheetName "Machines actives" `
+            -AutoSize `
+            -AutoFilter `
+            -FreezeTopRow `
+            -BoldTopRow `
+            -Title "Reservations DHCP actives - $ServerName" `
+            -TitleSize 14 `
+            -TitleBold `
+            -TitleBackgroundColor ([System.Drawing.Color]::FromArgb(41, 128, 185)) `
+            -TitleFillPattern "Solid"
+
+    $ws = Open-ExcelPackage -Path $Path
+    $sheet = $ws.Workbook.Worksheets["Machines actives"]
+
+    $headerRange = $sheet.Cells["A2:O2"]
+    $headerRange.Style.Font.Bold = $true
+    $headerRange.Style.Font.Color.SetColor([System.Drawing.Color]::White)
+    $headerRange.Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
+    $headerRange.Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(44, 62, 80))
+
+    $lastRow = $sheet.Dimension.End.Row
+    for ($row = 3; $row -le $lastRow; $row++) {
+        if ($row % 2 -eq 1) {
+            $rowRange = $sheet.Cells["A${row}:O${row}"]
+            $rowRange.Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
+            $rowRange.Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(235, 245, 251))
+        }
+    }
+
+    Close-ExcelPackage $ws -Show:$false
+
+    # --- Onglet 2 : Statistiques fabricant ---
+    $stats = $grouped | ForEach-Object {
+        [PSCustomObject]@{
+            Fabricant   = $_.Name
+            NbMachines  = $_.Count
+            Pourcentage = [string]([math]::Round(($_.Count / $Data.Count) * 100, 1)) + " %"
+        }
+    } | Sort-Object NbMachines -Descending
+
+    $stats | Export-Excel -Path $Path `
+        -WorksheetName "Statistiques fabricants" `
+        -AutoSize `
+        -AutoFilter `
+        -FreezeTopRow `
+        -BoldTopRow `
+        -Title "Repartition par fabricant" `
+        -TitleSize 14 `
+        -TitleBold `
+        -TitleBackgroundColor ([System.Drawing.Color]::FromArgb(39, 174, 96)) `
+        -TitleFillPattern "Solid" `
+        -IncludePivotChart `
+        -ChartType Pie
+
+    # --- Onglet 3 : Statistiques OS ---
+    $osStats = $Data | Group-Object -Property OS | ForEach-Object {
+        [PSCustomObject]@{
+            SystemeExploitation = $_.Name
+            NbMachines          = $_.Count
+            Pourcentage         = [string]([math]::Round(($_.Count / $Data.Count) * 100, 1)) + " %"
+        }
+    } | Sort-Object NbMachines -Descending
+
+    $osStats | Export-Excel -Path $Path `
+        -WorksheetName "Statistiques OS" `
+        -AutoSize `
+        -AutoFilter `
+        -FreezeTopRow `
+        -BoldTopRow `
+        -Title "Repartition par systeme d exploitation" `
+        -TitleSize 14 `
+        -TitleBold `
+        -TitleBackgroundColor ([System.Drawing.Color]::FromArgb(142, 68, 173)) `
+        -TitleFillPattern "Solid" `
+        -IncludePivotChart `
+        -ChartType Pie
+
+    # --- Onglet 4 : Machines a surveiller (inactives mais conservees) ---
+    $aControler = $Data | Where-Object {
+        $_.JoursInactif -ne $null -and $_.JoursInactif -ge $SeuilInactif
+    } | Sort-Object JoursInactif -Descending
+
+    if ($aControler.Count -gt 0) {
+        $aControler | Select-Object Nom, IP, MAC, Fabricant, OS, DerniereConnexion, JoursInactif, CompteActif, OU, RaisonConservation |
+            Export-Excel -Path $Path `
+                -WorksheetName "A surveiller" `
+                -AutoSize `
+                -AutoFilter `
+                -FreezeTopRow `
+                -BoldTopRow `
+                -Title "Actives mais inactives depuis +$SeuilInactif jours" `
+                -TitleSize 14 `
+                -TitleBold `
+                -TitleBackgroundColor ([System.Drawing.Color]::FromArgb(243, 156, 18)) `
+                -TitleFillPattern "Solid"
+    }
+
+    # --- Un onglet par fabricant ---
+    $colors = @(
+        [System.Drawing.Color]::FromArgb(41, 128, 185),
+        [System.Drawing.Color]::FromArgb(39, 174, 96),
+        [System.Drawing.Color]::FromArgb(192, 57, 43),
+        [System.Drawing.Color]::FromArgb(142, 68, 173),
+        [System.Drawing.Color]::FromArgb(243, 156, 18),
+        [System.Drawing.Color]::FromArgb(22, 160, 133),
+        [System.Drawing.Color]::FromArgb(44, 62, 80),
+        [System.Drawing.Color]::FromArgb(211, 84, 0)
+    )
+
+    $colorIndex = 0
+
+    foreach ($group in $grouped) {
+        $sheetName = $group.Name -replace "[^a-zA-Z0-9 _-]", ""
+        if ($sheetName.Length -gt 31) { $sheetName = $sheetName.Substring(0, 31) }
+        if ([string]::IsNullOrWhiteSpace($sheetName)) { $sheetName = "Inconnu" }
+
+        $titleColor = $colors[$colorIndex % $colors.Count]
+        $colorIndex++
+
+        $group.Group | Sort-Object IP | Select-Object Nom, IP, MAC, Etendue, OS, Statut, DerniereConnexion, JoursInactif, RaisonConservation |
+            Export-Excel -Path $Path `
+                -WorksheetName $sheetName `
+                -AutoSize `
+                -AutoFilter `
+                -FreezeTopRow `
+                -BoldTopRow `
+                -Title "$($group.Name) - $($group.Count) machine(s)" `
+                -TitleSize 13 `
+                -TitleBold `
+                -TitleBackgroundColor $titleColor `
+                -TitleFillPattern "Solid"
+
+        $ws = Open-ExcelPackage -Path $Path
+        $sheet = $ws.Workbook.Worksheets[$sheetName]
+
+        if ($null -ne $sheet) {
+            $headerRange = $sheet.Cells["A2:I2"]
+            $headerRange.Style.Font.Bold = $true
+            $headerRange.Style.Font.Color.SetColor([System.Drawing.Color]::White)
+            $headerRange.Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
+            $headerRange.Style.Fill.BackgroundColor.SetColor($titleColor)
+
+            $lastRow = $sheet.Dimension.End.Row
+            for ($row = 3; $row -le $lastRow; $row++) {
+                if ($row % 2 -eq 1) {
+                    $rowRange = $sheet.Cells["A${row}:I${row}"]
+                    $rowRange.Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
+                    $rowRange.Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(240, 248, 255))
+                }
+            }
+        }
+
+        Close-ExcelPackage $ws -Show:$false
+    }
+
+    Write-Host ""
+    Write-Host "[OK] Fichier Excel exporte : $Path" -ForegroundColor Green
+    Write-Host "     - Onglet Machines actives : vue complete filtree" -ForegroundColor DarkGray
+    Write-Host "     - Onglet Statistiques fabricants : camembert" -ForegroundColor DarkGray
+    Write-Host "     - Onglet Statistiques OS : repartition par OS" -ForegroundColor DarkGray
+    if ($aControler.Count -gt 0) {
+        Write-Host "     - Onglet A surveiller : $($aControler.Count) machine(s) actives mais peu recentes" -ForegroundColor DarkGray
+    }
+    Write-Host "     - $($grouped.Count) onglet(s) par fabricant" -ForegroundColor DarkGray
+}
+
+# -----------------------------------------------
+# SECTION 8 : Rapport HTML
+# -----------------------------------------------
+
+function Export-HtmlReport {
+    param(
+        [array]$Data,
+        [string]$Path,
+        [string]$ServerName,
+        [int]$SeuilInactif
+    )
+
+    $grouped   = $Data | Group-Object -Property Fabricant | Sort-Object -Property Name
+    $enLigne   = ($Data | Where-Object { $_.Statut -eq "En ligne" }).Count
+    $horsLigne = ($Data | Where-Object { $_.Statut -eq "Hors ligne" }).Count
+    $aControler = ($Data | Where-Object { $_.JoursInactif -ne $null -and $_.JoursInactif -ge $SeuilInactif }).Count
+    $dateStr   = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
+
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine('<!DOCTYPE html>')
+    [void]$sb.AppendLine('<html lang="fr"><head><meta charset="UTF-8">')
+    [void]$sb.AppendLine('<title>Rapport DHCP - Machines actives</title>')
+    [void]$sb.AppendLine('<style>')
+    [void]$sb.AppendLine('body{font-family:Segoe UI,sans-serif;margin:20px;background:#f5f5f5}')
+    [void]$sb.AppendLine('h1{color:#1a5276;border-bottom:3px solid #2980b9;padding-bottom:10px}')
+    [void]$sb.AppendLine('h2{color:#2c3e50;margin-top:30px}')
+    [void]$sb.AppendLine('.cards{display:flex;gap:15px;flex-wrap:wrap;margin-bottom:25px}')
+    [void]$sb.AppendLine('.card{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1);min-width:180px;text-align:center}')
+    [void]$sb.AppendLine('.card .num{font-size:2em;font-weight:bold;color:#2980b9}')
+    [void]$sb.AppendLine('.card .label{color:#7f8c8d;font-size:.9em}')
+    [void]$sb.AppendLine('.card.red .num{color:#e74c3c}')
+    [void]$sb.AppendLine('.card.green .num{color:#27ae60}')
+    [void]$sb.AppendLine('.card.orange .num{color:#f39c12}')
+    [void]$sb.AppendLine('.vg{background:#fff;margin-bottom:20px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1);overflow:hidden}')
+    [void]$sb.AppendLine('.vh{background:#2c3e50;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center}')
+    [void]$sb.AppendLine('.vh .c{background:#2980b9;padding:2px 12px;border-radius:12px;font-size:.85em}')
+    [void]$sb.AppendLine('table{width:100%;border-collapse:collapse}')
+    [void]$sb.AppendLine('th{background:#ecf0f1;padding:10px 15px;text-align:left;font-weight:600;color:#2c3e50;border-bottom:2px solid #bdc3c7}')
+    [void]$sb.AppendLine('td{padding:8px 15px;border-bottom:1px solid #ecf0f1}')
+    [void]$sb.AppendLine('tr:hover td{background:#f0f7fc}')
+    [void]$sb.AppendLine('.online{color:#27ae60;font-weight:bold}')
+    [void]$sb.AppendLine('.offline{color:#e74c3c;font-weight:bold}')
+    [void]$sb.AppendLine('.warn{color:#f39c12;font-weight:bold}')
+    [void]$sb.AppendLine('.raison{color:#7f8c8d;font-size:.85em;font-style:italic}')
+    [void]$sb.AppendLine('</style></head><body>')
+    [void]$sb.AppendLine("<h1>Rapport DHCP - Machines actives - $ServerName</h1>")
+    $ansSeuil = [math]::Round($MaxInactiveDays / 365, 1)
+    [void]$sb.AppendLine("<p style='color:#7f8c8d'>Filtre : machines vues depuis moins de $ansSeuil an(s) OU en ligne OU compte AD actif</p>")
+
+    [void]$sb.AppendLine('<div class="cards">')
+    [void]$sb.AppendLine("<div class='card'><div class='num'>$($Data.Count)</div><div class='label'>Machines actives</div></div>")
+    [void]$sb.AppendLine("<div class='card'><div class='num'>$($grouped.Count)</div><div class='label'>Fabricants</div></div>")
+    [void]$sb.AppendLine("<div class='card green'><div class='num'>$enLigne</div><div class='label'>En ligne</div></div>")
+    [void]$sb.AppendLine("<div class='card red'><div class='num'>$horsLigne</div><div class='label'>Hors ligne</div></div>")
+    [void]$sb.AppendLine("<div class='card orange'><div class='num'>$aControler</div><div class='label'>A surveiller (+$SeuilInactif j)</div></div>")
+    [void]$sb.AppendLine('</div>')
+
+    foreach ($group in $grouped) {
+        [void]$sb.AppendLine("<div class='vg'><div class='vh'><span>$($group.Name)</span><span class='c'>$($group.Count)</span></div>")
+        [void]$sb.AppendLine('<table><tr><th>Nom</th><th>IP</th><th>MAC</th><th>OS</th><th>Statut</th><th>Derniere connexion</th><th>Jours inactif</th><th>Raison</th></tr>')
+        foreach ($item in ($group.Group | Sort-Object IP)) {
+            $statusClass = if ($item.Statut -eq "En ligne") { "online" } elseif ($item.Statut -eq "Hors ligne") { "offline" } else { "" }
+            $warnClass   = if ($item.JoursInactif -ge $SeuilInactif) { "warn" } else { "" }
+            [void]$sb.AppendLine("<tr><td>$($item.Nom)</td><td>$($item.IP)</td><td>$($item.MAC)</td><td>$($item.OS)</td><td class='$statusClass'>$($item.Statut)</td><td>$($item.DerniereConnexion)</td><td class='$warnClass'>$($item.JoursInactif)</td><td class='raison'>$($item.RaisonConservation)</td></tr>")
+        }
+        [void]$sb.AppendLine('</table></div>')
+    }
+
+    [void]$sb.AppendLine("<p style='color:#999;font-size:.85em;margin-top:20px'>Genere le $dateStr</p>")
+    [void]$sb.AppendLine('</body></html>')
+
+    $sb.ToString() | Set-Content -Path $Path -Encoding UTF8 -Force
+    Write-Host ""
+    Write-Host "[OK] Rapport HTML exporte : $Path" -ForegroundColor Green
+}
+
+# -----------------------------------------------
+# SECTION 9 : Execution principale
+# -----------------------------------------------
+
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  DHCP + AD - Inventaire machines actives" -ForegroundColor Cyan
+Write-Host "  Serveur DHCP     : $DhcpServer" -ForegroundColor Cyan
+Write-Host "  Seuil inactivite : $InactiveDays jours" -ForegroundColor Cyan
+Write-Host "  Seuil exclusion  : $MaxInactiveDays jours ($([math]::Round($MaxInactiveDays/365,1)) an(s))" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+
+$ouiDatabase = Get-OuiDatabase
+
+if ($ScopeId) {
+    $scopes = $ScopeId
+}
+else {
+    Write-Host ""
+    Write-Host "[*] Recuperation de toutes les etendues DHCP..." -ForegroundColor Cyan
+    try {
+        $scopes = (Get-DhcpServerv4Scope -ComputerName $DhcpServer -ErrorAction Stop).ScopeId.IPAddressToString
+        Write-Host "  $($scopes.Count) etendue(s) trouvee(s)" -ForegroundColor Green
+    }
+    catch {
+        Write-Error "Impossible de contacter le serveur DHCP. Verifiez le nom et les droits. $_"
+        exit 1
+    }
+}
+
+$allResults = @()
+foreach ($scope in $scopes) {
+    $allResults += Get-DhcpReservationsFromScope -Server $DhcpServer -Scope $scope -OuiDb $ouiDatabase
+}
+
+if ($allResults.Count -eq 0) {
+    Write-Warning "Aucune reservation trouvee sur le serveur."
+    exit 0
+}
+
+$allLeases = @()
+foreach ($scope in $scopes) {
+    $allLeases += Get-DhcpLeasesFromScope -Server $DhcpServer -Scope $scope -OuiDb $ouiDatabase
+}
+
+if ($allLeases.Count -gt 0) {
+    Write-Host ""
+    Write-Host "============================================" -ForegroundColor Cyan
+    Write-Host "  BAUX ACTIFS (dernieres connexions)" -ForegroundColor Cyan
+    Write-Host "============================================" -ForegroundColor Cyan
+
+    $allLeases | Sort-Object ExpirationBail -Descending | Select-Object -First 50 |
+        Format-Table -AutoSize Nom, IP, MAC, Fabricant, Etat, DernierBail, ExpirationBail
+}
+
+$adData = Get-ADComputerInfo
+
+$pingData = @{}
+if (-not $SkipPing) {
+    $pingData = Test-MachinesConnectivity -Machines $allResults
+}
+
+# Croiser toutes les donnees (brut, toutes machines)
+$mergedData = Merge-AllData -DhcpData $allResults -AdData $adData -PingData $pingData
+
+# Filtrer uniquement les machines actives
+$activeData = Select-ActiveMachines -Data $mergedData -MaxDays $MaxInactiveDays
+
+if ($activeData.Count -eq 0) {
+    Write-Warning "Aucune machine active trouvee apres filtrage."
+    exit 0
+}
+
+# -----------------------------------------------
+# SECTION 10 : Affichage console
+# -----------------------------------------------
+
+Write-Host ""
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  RESULTATS - MACHINES ACTIVES PAR FABRICANT" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+
+$grouped = $activeData | Group-Object -Property Fabricant | Sort-Object -Property Name
+
+foreach ($group in $grouped) {
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor White
+    Write-Host "  $($group.Name) ($($group.Count))" -ForegroundColor White
+    Write-Host "========================================" -ForegroundColor White
+
+    $group.Group | Sort-Object IP | Format-Table -AutoSize -Property @(
+        @{ Label = "Nom";              Expression = { $_.Nom } }
+        @{ Label = "IP";               Expression = { $_.IP } }
+        @{ Label = "MAC";              Expression = { $_.MAC } }
+        @{ Label = "OS";               Expression = { $_.OS } }
+        @{ Label = "Statut";           Expression = { $_.Statut } }
+        @{ Label = "Derniere connexion"; Expression = { $_.DerniereConnexion } }
+        @{ Label = "Raison";           Expression = { $_.RaisonConservation } }
+    ) | Out-String | Write-Host
+}
+
+Write-Host "------------ STATISTIQUES ------------" -ForegroundColor DarkGray
+Write-Host "  Reservations brutes       : $($mergedData.Count)"
+Write-Host "  Machines actives retenues : $($activeData.Count)"
+Write-Host "  Exclues (inactives)       : $($mergedData.Count - $activeData.Count)" -ForegroundColor DarkGray
+Write-Host "  Fabricants uniques        : $($grouped.Count)"
+$enLigne   = ($activeData | Where-Object { $_.Statut -eq "En ligne" }).Count
+$horsLigne = ($activeData | Where-Object { $_.Statut -eq "Hors ligne" }).Count
+$aCtrl     = ($activeData | Where-Object { $_.JoursInactif -ne $null -and $_.JoursInactif -ge $InactiveDays }).Count
+Write-Host "  En ligne : $enLigne | Hors ligne : $horsLigne" -ForegroundColor Green
+Write-Host "  A surveiller (+$InactiveDays j) : $aCtrl" -ForegroundColor Yellow
+Write-Host ""
+
+$grouped | Sort-Object Count -Descending | ForEach-Object {
+    $bar  = "#" * [Math]::Min($_.Count, 40)
+    $line = "  {0,-35} {1,4}  {2}" -f $_.Name, $_.Count, $bar
+    Write-Host $line -ForegroundColor Cyan
+}
+
+Write-Host ""
+Write-Host "------------ REPARTITION OS ------------" -ForegroundColor DarkGray
+$activeData | Group-Object OS | Sort-Object Count -Descending | ForEach-Object {
+    $line = "  {0,-40} {1,4}" -f $_.Name, $_.Count
+    Write-Host $line -ForegroundColor Cyan
+}
+
+# -----------------------------------------------
+# SECTION 11 : Exports
+# -----------------------------------------------
+
+if (-not $ExportXlsx -and -not $ExportCsv -and -not $ExportHtml) {
+    $ExportXlsx = Join-Path (Get-Location) "Inventaire_DHCP_AD_actives.xlsx"
+    Write-Host ""
+    Write-Host "[*] Generation Excel par defaut..." -ForegroundColor Cyan
+}
+
+if ($ExportXlsx) {
+    $excelOk = Install-ImportExcelIfNeeded
+    if ($excelOk) {
+        Export-ExcelReport -Data $activeData -Path $ExportXlsx -ServerName $DhcpServer -SeuilInactif $InactiveDays
+    }
+    else {
+        Write-Warning "Export Excel impossible. Export CSV de secours..."
+        $fallbackCsv = $ExportXlsx -replace "\.xlsx$", ".csv"
+        $activeData | Sort-Object Fabricant, IP | Export-Csv -Path $fallbackCsv -NoTypeInformation -Encoding UTF8 -Delimiter ";"
+        Write-Host "[OK] CSV de secours : $fallbackCsv" -ForegroundColor Yellow
+    }
+}
+
+if ($ExportCsv) {
+    $activeData | Sort-Object Fabricant, IP | Export-Csv -Path $ExportCsv -NoTypeInformation -Encoding UTF8 -Delimiter ";"
+    Write-Host ""
+    Write-Host "[OK] Export CSV : $ExportCsv" -ForegroundColor Green
+}
+
+if ($ExportHtml) {
+    Export-HtmlReport -Data $activeData -Path $ExportHtml -ServerName $DhcpServer -SeuilInactif $InactiveDays
+}
+
+Write-Host ""
+Write-Host "[TERMINE]" -ForegroundColor Green
+
+return $activeData
