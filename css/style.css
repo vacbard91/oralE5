@@ -1,0 +1,405 @@
+/* ========================================
+   Portfolio E5 - Valentin ACBARD
+   Style : Sobre & Pro (Bleu nuit / Blanc)
+   ======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bleu-nuit: #0f1e3d;
+    --bleu-nuit-clair: #1a2f5c;
+    --bleu-accent: #2c5eb8;
+    --bleu-hover: #3b74d9;
+    --blanc: #ffffff;
+    --gris-fond: #f5f7fa;
+    --gris-bord: #dde3ec;
+    --gris-texte: #4a5568;
+    --gris-clair: #6b7280;
+    --shadow-sm: 0 2px 4px rgba(15, 30, 61, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 30, 61, 0.08);
+    --shadow-lg: 0 8px 24px rgba(15, 30, 61, 0.12);
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #2d3748;
+    background: var(--blanc);
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ========== NAVBAR ========== */
+.navbar {
+    background: var(--bleu-nuit);
+    color: var(--blanc);
+    padding: 18px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-md);
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--blanc);
+    text-decoration: none;
+    letter-spacing: 1.5px;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 8px;
+}
+
+.nav-links a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.nav-links a:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--blanc);
+}
+
+.nav-links a.active {
+    background: var(--bleu-accent);
+    color: var(--blanc);
+}
+
+/* ========== HERO ========== */
+.hero {
+    background: linear-gradient(135deg, var(--bleu-nuit) 0%, var(--bleu-nuit-clair) 100%);
+    color: var(--blanc);
+    padding: 80px 0 60px;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    font-size: 18px;
+    opacity: 0.85;
+    margin-bottom: 32px;
+}
+
+.hero-info {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 20px 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    text-align: left;
+}
+
+.hero-info div {
+    padding: 4px 0;
+    font-size: 15px;
+}
+
+.hero-info strong {
+    font-size: 17px;
+    color: var(--blanc);
+}
+
+/* ========== PAGE HEADER (pages internes) ========== */
+.page-header {
+    background: linear-gradient(135deg, var(--bleu-nuit) 0%, var(--bleu-nuit-clair) 100%);
+    color: var(--blanc);
+    padding: 50px 0 40px;
+}
+
+.page-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.page-header .subtitle {
+    margin-bottom: 0;
+    font-size: 17px;
+}
+
+/* ========== SECTIONS ========== */
+.section {
+    padding: 60px 0;
+}
+
+.section-alt {
+    background: var(--gris-fond);
+}
+
+.section h2 {
+    font-size: 28px;
+    color: var(--bleu-nuit);
+    margin-bottom: 32px;
+    font-weight: 700;
+    position: relative;
+    padding-bottom: 12px;
+}
+
+.section h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: var(--bleu-accent);
+    border-radius: 2px;
+}
+
+/* ========== CARDS PRÉSENTATION ========== */
+.card {
+    background: var(--blanc);
+    padding: 32px;
+    border-radius: 10px;
+    border: 1px solid var(--gris-bord);
+    box-shadow: var(--shadow-sm);
+}
+
+.card p {
+    margin-bottom: 14px;
+    color: var(--gris-texte);
+    font-size: 16px;
+}
+
+.card p:last-child {
+    margin-bottom: 0;
+}
+
+/* ========== NAV CARDS (accueil) ========== */
+.nav-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.nav-card {
+    background: var(--blanc);
+    padding: 32px 28px;
+    border-radius: 10px;
+    border: 1px solid var(--gris-bord);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--bleu-accent);
+}
+
+.nav-card-number {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--bleu-accent);
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+}
+
+.nav-card h3 {
+    font-size: 19px;
+    color: var(--bleu-nuit);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.nav-card p {
+    color: var(--gris-texte);
+    font-size: 14px;
+    margin-bottom: 18px;
+    line-height: 1.5;
+}
+
+.nav-card-link {
+    color: var(--bleu-accent);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* ========== RÉALISATIONS ========== */
+.realisation {
+    background: var(--blanc);
+    padding: 28px 32px;
+    border-radius: 10px;
+    border: 1px solid var(--gris-bord);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 24px;
+    transition: box-shadow 0.2s;
+}
+
+.realisation:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.realisation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--gris-bord);
+    flex-wrap: wrap;
+}
+
+.realisation h2 {
+    font-size: 20px;
+    color: var(--bleu-nuit);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.realisation h2::after {
+    display: none;
+}
+
+.period {
+    font-size: 13px;
+    color: var(--gris-clair);
+    font-weight: 500;
+}
+
+.competences {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.badge {
+    display: inline-block;
+    background: #e7efff;
+    color: var(--bleu-accent);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.description {
+    color: var(--gris-texte);
+    margin-bottom: 18px;
+    font-size: 15px;
+}
+
+/* ========== DOCUMENTS ========== */
+.documents h4 {
+    font-size: 14px;
+    color: var(--bleu-nuit);
+    margin-bottom: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.doc-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.doc-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--gris-fond);
+    border: 1px solid var(--gris-bord);
+    border-left: 3px solid var(--bleu-accent);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--bleu-nuit);
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.doc-link:hover {
+    background: #e7efff;
+    border-left-color: var(--bleu-hover);
+    border-color: var(--bleu-accent);
+    transform: translateX(4px);
+}
+
+.doc-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+/* ========== FOOTER ========== */
+footer {
+    background: var(--bleu-nuit);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 24px 0;
+    text-align: center;
+    margin-top: 40px;
+}
+
+footer p {
+    font-size: 14px;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .nav-container {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .hero h1 {
+        font-size: 30px;
+    }
+
+    .page-header h1 {
+        font-size: 24px;
+    }
+
+    .realisation-header {
+        flex-direction: column;
+    }
+
+    .competences {
+        justify-content: flex-start;
+    }
+
+    .realisation {
+        padding: 20px 18px;
+    }
+}
