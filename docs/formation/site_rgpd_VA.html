@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensibilisation RGPD – TPE/PME</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+        :root {
+            --bleu-nuit: #0f1e3d;
+            --bleu-mid: #1a2f5c;
+            --bleu-accent: #2c5eb8;
+            --bleu-clair: #e7efff;
+            --vert: #1a7a5e;
+            --vert-clair: #e3f5ef;
+            --jaune: #f5a623;
+            --jaune-clair: #fff8ed;
+            --rouge: #c0392b;
+            --blanc: #ffffff;
+            --gris-fond: #f5f7fa;
+            --gris-bord: #dde3ec;
+            --gris-texte: #4a5568;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            color: #2d3748;
+            background: var(--blanc);
+            line-height: 1.7;
+        }
+
+        /* ===== NAV ===== */
+        nav {
+            background: var(--bleu-nuit);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 12px rgba(15,30,61,.15);
+        }
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        nav .brand {
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: 1px;
+            text-decoration: none;
+        }
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 4px;
+        }
+        nav ul a {
+            color: rgba(255,255,255,.75);
+            text-decoration: none;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all .2s;
+        }
+        nav ul a:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+        /* ===== HERO ===== */
+        .hero {
+            background: linear-gradient(135deg, var(--bleu-nuit) 0%, var(--bleu-mid) 60%, #1e3a6e 100%);
+            color: #fff;
+            padding: 80px 0 60px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: 'RGPD';
+            position: absolute;
+            right: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-family: 'Syne', sans-serif;
+            font-size: 200px;
+            font-weight: 800;
+            color: rgba(255,255,255,.04);
+            pointer-events: none;
+            letter-spacing: -8px;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: rgba(255,255,255,.1);
+            border: 1px solid rgba(255,255,255,.2);
+            color: rgba(255,255,255,.9);
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            letter-spacing: .5px;
+        }
+        .hero h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 48px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+        .hero h1 span { color: #7eb3ff; }
+        .hero p {
+            font-size: 18px;
+            opacity: .85;
+            max-width: 560px;
+            margin-bottom: 36px;
+        }
+        .hero-pills {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .pill {
+            background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* ===== CONTAINER ===== */
+        .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+        /* ===== SECTION ===== */
+        .section { padding: 64px 0; }
+        .section-alt { background: var(--gris-fond); }
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--bleu-nuit);
+            margin-bottom: 8px;
+        }
+        .section-subtitle {
+            color: var(--gris-texte);
+            font-size: 16px;
+            margin-bottom: 40px;
+        }
+        .section-title-accent {
+            display: inline-block;
+            width: 48px;
+            height: 4px;
+            background: var(--bleu-accent);
+            border-radius: 2px;
+            margin-bottom: 16px;
+        }
+
+        /* ===== DEFINITION ===== */
+        .definition-card {
+            background: var(--blanc);
+            border: 1px solid var(--gris-bord);
+            border-radius: 16px;
+            padding: 36px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            box-shadow: 0 4px 16px rgba(15,30,61,.06);
+        }
+        .definition-card h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--bleu-nuit);
+            margin-bottom: 12px;
+        }
+        .definition-card p { color: var(--gris-texte); font-size: 15px; }
+        .def-highlight {
+            background: var(--bleu-clair);
+            border-left: 4px solid var(--bleu-accent);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-top: 16px;
+            font-size: 14px;
+            color: var(--bleu-mid);
+            font-style: italic;
+        }
+
+        /* ===== AVANTAGES ===== */
+        .avantages-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .avantage-card {
+            background: var(--blanc);
+            border: 1px solid var(--gris-bord);
+            border-radius: 12px;
+            padding: 24px;
+            position: relative;
+            transition: all .25s;
+        }
+        .avantage-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(15,30,61,.1);
+            border-color: var(--bleu-accent);
+        }
+        .avantage-num {
+            font-family: 'Syne', sans-serif;
+            font-size: 40px;
+            font-weight: 800;
+            color: var(--bleu-clair);
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+        .avantage-card h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--bleu-nuit);
+            margin-bottom: 8px;
+        }
+        .avantage-card p { color: var(--gris-texte); font-size: 14px; }
+
+        /* ===== 4 ACTIONS ===== */
+        .actions-list { display: flex; flex-direction: column; gap: 20px; }
+        .action-card {
+            background: var(--blanc);
+            border: 1px solid var(--gris-bord);
+            border-radius: 12px;
+            padding: 28px 32px;
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            transition: box-shadow .2s;
+        }
+        .action-card:hover { box-shadow: 0 4px 16px rgba(15,30,61,.08); }
+        .action-num {
+            flex-shrink: 0;
+            width: 52px;
+            height: 52px;
+            background: var(--bleu-nuit);
+            color: #fff;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Syne', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+        }
+        .action-content h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--bleu-nuit);
+            margin-bottom: 8px;
+        }
+        .action-content p { color: var(--gris-texte); font-size: 15px; }
+        .action-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .action-tag {
+            background: var(--bleu-clair);
+            color: var(--bleu-accent);
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* ===== DROITS ===== */
+        .droits-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .droit-card {
+            background: var(--blanc);
+            border: 1px solid var(--gris-bord);
+            border-radius: 10px;
+            padding: 20px;
+            border-top: 3px solid var(--bleu-accent);
+        }
+        .droit-card h4 {
+            font-family: 'Syne', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--bleu-nuit);
+            margin-bottom: 6px;
+        }
+        .droit-card p { color: var(--gris-texte); font-size: 13px; }
+
+        /* ===== ALERT BOX ===== */
+        .alert-box {
+            background: #fff8ed;
+            border: 1px solid #f5a623;
+            border-left: 4px solid #f5a623;
+            border-radius: 10px;
+            padding: 20px 24px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            margin-top: 32px;
+        }
+        .alert-icon { font-size: 24px; flex-shrink: 0; }
+        .alert-box p { color: #7a4f0d; font-size: 14px; }
+        .alert-box strong { color: #5a3a08; }
+
+        /* ===== SANCTIONS ===== */
+        .sanctions-card {
+            background: linear-gradient(135deg, #2c0f0f, #4a1a1a);
+            color: #fff;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+        }
+        .sanctions-card h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+        .sanctions-montants {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 24px;
+        }
+        .sanction-item { text-align: center; }
+        .sanction-montant {
+            font-family: 'Syne', sans-serif;
+            font-size: 36px;
+            font-weight: 800;
+            color: #ff8a80;
+        }
+        .sanction-desc { font-size: 13px; opacity: .8; margin-top: 4px; }
+
+        /* ===== CHARTE ===== */
+        .charte-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .charte-card {
+            background: var(--blanc);
+            border: 1px solid var(--gris-bord);
+            border-radius: 12px;
+            padding: 28px;
+        }
+        .charte-card h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--bleu-nuit);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .charte-card ul { list-style: none; }
+        .charte-card ul li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--gris-fond);
+            color: var(--gris-texte);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .charte-card ul li:last-child { border-bottom: none; }
+        .charte-card ul li::before {
+            content: '✓';
+            color: var(--vert);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            background: var(--bleu-nuit);
+            color: rgba(255,255,255,.6);
+            padding: 28px 0;
+            text-align: center;
+            font-size: 14px;
+        }
+        footer a { color: rgba(255,255,255,.8); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 32px; }
+            .avantages-grid { grid-template-columns: 1fr; }
+            .droits-grid { grid-template-columns: 1fr 1fr; }
+            .charte-grid { grid-template-columns: 1fr; }
+            .definition-card { grid-template-columns: 1fr; }
+            .sanctions-montants { flex-direction: column; gap: 20px; }
+            nav ul { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="container nav-container">
+        <a href="#" class="brand">RGPD — Sensibilisation</a>
+        <ul>
+            <li><a href="#definition">Définition</a></li>
+            <li><a href="#avantages">Avantages</a></li>
+            <li><a href="#actions">Actions</a></li>
+            <li><a href="#droits">Droits</a></li>
+            <li><a href="#charte">Charte</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-badge">Guide de sensibilisation — CNIL / Bpifrance</div>
+        <h1>Le <span>RGPD</span>,<br>c'est quoi ?</h1>
+        <p>Règlement Général sur la Protection des Données — tout ce que votre organisation doit savoir pour être en conformité.</p>
+        <div class="hero-pills">
+            <span class="pill">🇪🇺 En vigueur depuis mai 2018</span>
+            <span class="pill">🏢 Toutes les organisations concernées</span>
+            <span class="pill">🔒 Protection des données personnelles</span>
+        </div>
+    </div>
+</section>
+
+<!-- DÉFINITION -->
+<section class="section" id="definition">
+    <div class="container">
+        <div class="section-title-accent"></div>
+        <h2 class="section-title">Qu'est-ce que le RGPD ?</h2>
+        <p class="section-subtitle">Comprendre les notions fondamentales avant de passer à l'action.</p>
+
+        <div class="definition-card">
+            <div>
+                <h3>Le Règlement</h3>
+                <p>Le RGPD encadre le traitement des données personnelles sur le territoire de l'Union européenne. Il s'applique à toute organisation, publique ou privée, dès lors qu'elle traite des données de résidents européens.</p>
+                <div class="def-highlight">
+                    « Toute information se rapportant à une personne physique identifiée ou identifiable. »
+                </div>
+            </div>
+            <div>
+                <h3>Qui est concerné ?</h3>
+                <p>Toute organisation quelle que soit sa taille, son pays d'implantation ou son activité. Les TPE et PME sont concernées au même titre que les grandes entreprises. Le critère déterminant est le <strong>volume et la sensibilité des données traitées</strong>, non la taille de l'entreprise.</p>
+                <div class="def-highlight">
+                    Responsable de traitement et sous-traitants sont tous deux concernés par les obligations du RGPD.
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- AVANTAGES -->
+<section class="section section-alt" id="avantages">
+    <div class="container">
+        <div class="section-title-accent"></div>
+        <h2 class="section-title">Les 6 avantages pour votre organisation</h2>
+        <p class="section-subtitle">Se conformer au RGPD, c'est aussi une opportunité économique et organisationnelle.</p>
+
+        <div class="avantages-grid">
+            <div class="avantage-card">
+                <div class="avantage-num">01</div>
+                <h3>Renforcer la confiance</h3>
+                <p>Respecter les droits des personnes valorise votre image d'organisation sérieuse et responsable.</p>
+            </div>
+            <div class="avantage-card">
+                <div class="avantage-num">02</div>
+                <h3>Améliorer l'efficacité</h3>
+                <p>Une gestion rigoureuse des données vous permet de gagner en efficacité et en productivité commerciale.</p>
+            </div>
+            <div class="avantage-card">
+                <div class="avantage-num">03</div>
+                <h3>Mieux gérer</h3>
+                <p>Le principe de minimisation vous pousse à ne collecter que ce qui est vraiment nécessaire, optimisant vos investissements.</p>
+            </div>
+            <div class="avantage-card">
+                <div class="avantage-num">04</div>
+                <h3>Améliorer la sécurité</h3>
+                <p>Protéger son patrimoine informationnel, c'est donner à son organisation les moyens de se développer sereinement.</p>
+            </div>
+            <div class="avantage-card">
+                <div class="avantage-num">05</div>
+                <h3>Rassurer les partenaires</h3>
+                <p>Les donneurs d'ordre sont très attentifs à la mise en œuvre du RGPD par leurs prestataires. Un avantage concurrentiel réel.</p>
+            </div>
+            <div class="avantage-card">
+                <div class="avantage-num">06</div>
+                <h3>Créer de nouveaux services</h3>
+                <p>Le RGPD introduit des concepts comme la portabilité des données, source de nouvelles opportunités économiques.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 4 ACTIONS -->
+<section class="section" id="actions">
+    <div class="container">
+        <div class="section-title-accent"></div>
+        <h2 class="section-title">Comment passer à l'action ?</h2>
+        <p class="section-subtitle">Les 4 étapes clés pour entamer votre mise en conformité.</p>
+
+        <div class="actions-list">
+            <div class="action-card">
+                <div class="action-num">1</div>
+                <div class="action-content">
+                    <h3>Recensez vos fichiers</h3>
+                    <p>Constituez un registre des traitements de données listant pour chaque activité : la finalité, les catégories de données, qui y a accès, et la durée de conservation. Ce registre vous donnera une vision d'ensemble sur vos traitements.</p>
+                    <div class="action-tags">
+                        <span class="action-tag">Registre CNIL</span>
+                        <span class="action-tag">Finalité</span>
+                        <span class="action-tag">Durée de conservation</span>
+                    </div>
+                </div>
+            </div>
+            <div class="action-card">
+                <div class="action-num">2</div>
+                <div class="action-content">
+                    <h3>Faites le tri dans vos données</h3>
+                    <p>Vérifiez que les données traitées sont nécessaires, qu'aucune donnée sensible n'est traitée sans droit, que seules les personnes habilitées y ont accès, et que vous ne conservez pas les données au-delà du nécessaire.</p>
+                    <div class="action-tags">
+                        <span class="action-tag">Minimisation</span>
+                        <span class="action-tag">Habilitations</span>
+                        <span class="action-tag">Archivage</span>
+                    </div>
+                </div>
+            </div>
+            <div class="action-card">
+                <div class="action-num">3</div>
+                <div class="action-content">
+                    <h3>Respectez les droits des personnes</h3>
+                    <p>Informez les personnes à chaque collecte (finalité, base légale, durée de conservation, droits exercables). Mettez en place un processus pour traiter les demandes dans un délai maximum d'1 mois.</p>
+                    <div class="action-tags">
+                        <span class="action-tag">Transparence</span>
+                        <span class="action-tag">Droit d'accès</span>
+                        <span class="action-tag">Droit à l'effacement</span>
+                    </div>
+                </div>
+            </div>
+            <div class="action-card">
+                <div class="action-num">4</div>
+                <div class="action-content">
+                    <h3>Sécurisez vos données</h3>
+                    <p>Mettez à jour antivirus et logiciels, utilisez des mots de passe complexes, chiffrez les données sensibles. En cas de violation de données, vous devez la signaler à la CNIL dans les <strong>72 heures</strong>.</p>
+                    <div class="action-tags">
+                        <span class="action-tag">Chiffrement</span>
+                        <span class="action-tag">Mots de passe</span>
+                        <span class="action-tag">Notification CNIL 72h</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert-box">
+            <div class="alert-icon">⚠️</div>
+            <div>
+                <p><strong>Violation de données personnelles :</strong> Si votre organisation subit une violation (données détruites, perdues, altérées ou divulguées de manière accidentelle ou illicite), vous devez la signaler à la CNIL dans les <strong>72 heures</strong> si elle est susceptible de représenter un risque pour les droits et libertés des personnes.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- DROITS DES PERSONNES -->
+<section class="section section-alt" id="droits">
+    <div class="container">
+        <div class="section-title-accent"></div>
+        <h2 class="section-title">Les droits des personnes</h2>
+        <p class="section-subtitle">Le RGPD renforce les droits des individus sur leurs données personnelles.</p>
+
+        <div class="droits-grid">
+            <div class="droit-card">
+                <h4>🔍 Droit d'accès</h4>
+                <p>Toute personne peut demander à accéder aux données la concernant et en obtenir une copie.</p>
+            </div>
+            <div class="droit-card">
+                <h4>✏️ Droit de rectification</h4>
+                <p>Demander la correction de données inexactes ou incomplètes.</p>
+            </div>
+            <div class="droit-card">
+                <h4>🗑️ Droit à l'effacement</h4>
+                <p>Obtenir la suppression des données dans certaines conditions (droit à l'oubli).</p>
+            </div>
+            <div class="droit-card">
+                <h4>🚫 Droit d'opposition</h4>
+                <p>S'opposer au traitement de ses données pour des motifs légitimes.</p>
+            </div>
+            <div class="droit-card">
+                <h4>📦 Droit à la portabilité</h4>
+                <p>Recevoir ses données dans un format structuré et lisible par machine.</p>
+            </div>
+            <div class="droit-card">
+                <h4>⏸️ Droit à la limitation</h4>
+                <p>Demander la suspension temporaire du traitement de ses données.</p>
+            </div>
+        </div>
+
+        <div style="margin-top: 36px;">
+            <div class="sanctions-card">
+                <h3>⚖️ Sanctions en cas de non-conformité</h3>
+                <p style="opacity:.8; font-size:15px;">La CNIL peut imposer des sanctions administratives significatives.</p>
+                <div class="sanctions-montants">
+                    <div class="sanction-item">
+                        <div class="sanction-montant">20 M€</div>
+                        <div class="sanction-desc">ou 4% du CA mondial annuel<br>pour les infractions graves</div>
+                    </div>
+                    <div class="sanction-item">
+                        <div class="sanction-montant">10 M€</div>
+                        <div class="sanction-desc">ou 2% du CA mondial annuel<br>pour les infractions moins graves</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CHARTE INFORMATIQUE -->
+<section class="section" id="charte">
+    <div class="container">
+        <div class="section-title-accent"></div>
+        <h2 class="section-title">Charte informatique & bonnes pratiques</h2>
+        <p class="section-subtitle">Les règles essentielles à mettre en place dans votre organisation.</p>
+
+        <div class="charte-grid">
+            <div class="charte-card">
+                <h3>🔐 Sécurité des accès</h3>
+                <ul>
+                    <li>Mots de passe complexes (12 caractères minimum)</li>
+                    <li>Changement régulier des mots de passe</li>
+                    <li>Profils distincts selon les besoins utilisateurs</li>
+                    <li>Accès aux locaux sécurisés physiquement</li>
+                    <li>Double authentification sur les accès sensibles</li>
+                </ul>
+            </div>
+            <div class="charte-card">
+                <h3>💾 Gestion des données</h3>
+                <ul>
+                    <li>Ne collecter que les données vraiment nécessaires</li>
+                    <li>Tenir à jour la liste des fichiers de données</li>
+                    <li>Mettre en place des règles d'archivage automatique</li>
+                    <li>Procédure de sauvegarde et récupération documentée</li>
+                    <li>Chiffrement des données sensibles</li>
+                </ul>
+            </div>
+            <div class="charte-card">
+                <h3>📋 Obligations légales</h3>
+                <ul>
+                    <li>Informer les personnes à chaque collecte de données</li>
+                    <li>Répondre aux demandes d'exercice des droits sous 1 mois</li>
+                    <li>Signaler les violations de données à la CNIL sous 72h</li>
+                    <li>Tenir un registre des traitements à jour</li>
+                    <li>Contractualiser les obligations avec les sous-traitants</li>
+                </ul>
+            </div>
+            <div class="charte-card">
+                <h3>🖥️ Usage du système informatique</h3>
+                <ul>
+                    <li>Mise à jour régulière des logiciels et antivirus</li>
+                    <li>Interdiction de télécharger des logiciels non autorisés</li>
+                    <li>Verrouillage de session en cas d'absence</li>
+                    <li>Utilisation des ressources informatiques à des fins professionnelles</li>
+                    <li>Signalement immédiat de tout incident de sécurité</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="alert-box" style="margin-top:32px;">
+            <div class="alert-icon">📎</div>
+            <div>
+                <p><strong>Pour aller plus loin :</strong> La CNIL met à disposition de nombreuses ressources gratuites sur <a href="https://www.cnil.fr" target="_blank" style="color: #7a4f0d;"><strong>www.cnil.fr</strong></a> — registre de traitements, modèles de clauses, guides par secteur d'activité. En cas de difficultés suite à une attaque informatique : <a href="https://www.cybermalveillance.gouv.fr" target="_blank" style="color: #7a4f0d;"><strong>www.cybermalveillance.gouv.fr</strong></a></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <p>Site de sensibilisation au RGPD — Réalisé par Valentin ACBARD — BTS SIO SISR 2026 — Sources : CNIL / Bpifrance Le Lab</p>
+    </div>
+</footer>
+
+</body>
+</html>
